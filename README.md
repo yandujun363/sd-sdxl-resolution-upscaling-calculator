@@ -43,3 +43,5 @@
 - 自动分辨率对齐算法确保结果符合技术要求
 
 您可以直接在浏览器中打开index.html文件使用这个应用，也可以将其部署到任何静态网站托管平台上。
+
+在线访问(Cloudflare): [SD\SDXL分辨率放大计算器](https://sd-tool.yangdujun.work)
