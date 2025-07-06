@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SD/SDXL 分辨率放大计算器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9f7ef;
+            border-radius: 4px;
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+        .preset-btn {
+            background: #3498db;
+            margin: 5px 0;
+        }
+        .preset-btn:hover {
+            background: #2980b9;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .btn-group button {
+            flex: 1;
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SD/SDXL 分辨率放大计算器</h1>
+        
+        <div class="input-group">
+            <label>预设分辨率组:</label>
+            <div class="btn-group">
+                <button class="preset-btn" onclick="setResolution(32, 24)">4:3 (32×24)</button>
+                <button class="preset-btn" onclick="setResolution(128, 72)">16:9 (128×72)</button>
+                <button class="preset-btn" onclick="setResolution(64, 40)">16:10 (64×40)</button>
+                <button class="preset-btn" onclick="setResolution(56, 24)">21:9 (56×24)</button>
+            </div>
+        </div>
+        
+        <div class="input-group">
+            <label for="width">自定义宽度 (px):</label>
+            <input type="number" id="width" placeholder="例如: 128" min="8" step="1">
+        </div>
+        
+        <div class="input-group">
+            <label for="height">自定义高度 (px):</label>
+            <input type="number" id="height" placeholder="例如: 72" min="8" step="1">
+        </div>
+        
+        <div class="input-group">
+            <label for="scale">放大倍数:</label>
+            <select id="scale">
+                <option value="2">2x</option>
+                <option value="3">3x</option>
+                <option value="4">4x</option>
+                <option value="5">5x</option>
+                <option value="6">6x</option>
+                <option value="7">7x</option>
+                <option value="8">8x</option>
+                <option value="9">9x</option>
+                <option value="10">10x</option>
+                <option value="16">16x</option>
+                <option value="32">32x</option>
+                <option value="64">64x</option>
+                <option value="custom">自定义...</option>
+            </select>
+        </div>
+        
+        <div class="input-group" id="custom-scale-group" style="display: none;">
+            <label for="custom-scale">自定义倍数:</label>
+            <input type="number" id="custom-scale" placeholder="例如: 12" min="1" step="1">
+        </div>
+        
+        <button onclick="calculate()">计算放大后的分辨率</button>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result" class="result">
+            <h3>放大后的分辨率:</h3>
+            <p>宽度: <span id="result-width"></span> px</p>
+            <p>高度: <span id="result-height"></span> px</p>
+            <p><strong>是否符合 8 的倍数: <span id="result-valid"></span></strong></p>
+            <p id="result-adjusted" style="color: #d35400; display: none;">
+                自动对齐后的分辨率: <span id="adjusted-width"></span> × <span id="adjusted-height"></span> px
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 显示/隐藏自定义倍数输入框
+        document.getElementById('scale').addEventListener('change', function() {
+            const customGroup = document.getElementById('custom-scale-group');
+            if (this.value === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+        });
+
+        // 设置预设分辨率
+        function setResolution(width, height) {
+            document.getElementById('width').value = width;
+            document.getElementById('height').value = height;
+            document.getElementById('error').textContent = '';
+            document.getElementById('result').style.display = 'none';
+        }
+
+        // 计算放大后的分辨率
+        function calculate() {
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+            const scaleSelect = document.getElementById('scale');
+            let scale;
+            
+            if (scaleSelect.value === 'custom') {
+                scale = parseInt(document.getElementById('custom-scale').value);
+            } else {
+                scale = parseInt(scaleSelect.value);
+            }
+            
+            // 验证输入
+            const errorElement = document.getElementById('error');
+            if (isNaN(width) || isNaN(height) || isNaN(scale)) {
+                errorElement.textContent = '请输入有效的正整数！';
+                return;
+            }
+            
+            if (width < 8 || height < 8 || scale < 1) {
+                errorElement.textContent = '宽度/高度必须 ≥8，放大倍数必须 ≥1！';
+                return;
+            }
+            
+            errorElement.textContent = '';
+            
+            // 计算放大后的分辨率
+            let newWidth = Math.round(width * scale);
+            let newHeight = Math.round(height * scale);
+            
+            // 检查是否是 8 的倍数
+            const isValidWidth = (newWidth % 8 === 0);
+            const isValidHeight = (newHeight % 8 === 0);
+            const isValid = isValidWidth && isValidHeight;
+            
+            // 显示结果
+            document.getElementById('result-width').textContent = newWidth;
+            document.getElementById('result-height').textContent = newHeight;
+            document.getElementById('result-valid').textContent = isValid ? '✅ 满足' : '❌ 不满足';
+            
+            // 如果不满足，计算最近的对齐值
+            if (!isValid) {
+                const adjustedWidth = Math.ceil(newWidth / 8) * 8;
+                const adjustedHeight = Math.ceil(newHeight / 8) * 8;
+                
+                document.getElementById('adjusted-width').textContent = adjustedWidth;
+                document.getElementById('adjusted-height').textContent = adjustedHeight;
+                document.getElementById('result-adjusted').style.display = 'block';
+            } else {
+                document.getElementById('result-adjusted').style.display = 'none';
+            }
+            
+            document.getElementById('result').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
